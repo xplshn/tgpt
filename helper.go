@@ -125,7 +125,7 @@ func getData(input string, isInteractive bool, extraOptions structs.ExtraOptions
 }
 
 func loading(stop *bool) {
-	spinChars := []string{"⣾ ", "⣽ ", "⣻ ", "⢿ ", "⡿ ", "⣟ ", "⣯ ", "⣷ "}
+	spinChars := []string{"|", "/", "-", "\\"}
 	i := 0
 	for {
 		if *stop {
