@@ -41,6 +41,7 @@ var temperature *string
 var top_p *string
 var max_length *string
 var preprompt *string
+var url *string
 
 func main() {
 	execPath, err := os.Executable()
@@ -56,16 +57,17 @@ func main() {
 
 	args := os.Args
 
-	apiModel = flag.String("model", "", "Choose which provider to use")
-	provider = flag.String("provider", "", "Choose which provider to use")
+	apiModel = flag.String("model", "", "Choose which model to use")
+	provider = flag.String("provider", os.Getenv("AI_PROVIDER"), "Choose which provider to use")
 	apiKey = flag.String("key", "", "Use personal API Key")
 	temperature = flag.String("temperature", "", "Set temperature")
 	top_p = flag.String("top_p", "", "Set top_p")
 	max_length = flag.String("max_length", "", "Set max length of response")
 	preprompt = flag.String("preprompt", "", "Set preprompt")
+	url = flag.String("url", "https://api.openai.com/v1/chat/completions", "url for openai providers")
 
 	isQuiet := flag.Bool("q", false, "Gives response back without loading animation")
-	flag.BoolVar(isQuiet, "quite", false, "Gives response back without loading animation")
+	flag.BoolVar(isQuiet, "quiet", false, "Gives response back without loading animation")
 
 	isWhole := flag.Bool("w", false, "Gives response back as a whole text")
 	flag.BoolVar(isWhole, "whole", false, "Gives response back as a whole text")
@@ -104,31 +106,47 @@ func main() {
 	pipedInput := ""
 	cleanPipedInput := ""
 
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "accessing standard input:", err)
+		os.Exit(1)
+	}
+
+	// Checking for piped text
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			pipedInput += scanner.Text()
+		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "reading standard input:", err)
+			os.Exit(1)
+		}
+	}
+
+	if len(pipedInput) > 0 {
+		cleanPipedInputByte, err := json.Marshal(pipedInput)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "marshaling piped input to JSON:", err)
+			os.Exit(1)
+		}
+		cleanPipedInput = string(cleanPipedInputByte)
+		cleanPipedInput = cleanPipedInput[1 : len(cleanPipedInput)-1]
+
+		safePipedBytes, err := json.Marshal(pipedInput + "\n")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "marshaling piped input to JSON:", err)
+			os.Exit(1)
+		}
+		pipedInput = string(safePipedBytes)
+		pipedInput = pipedInput[1 : len(pipedInput)-1]
+	}
+
+	contextTextByte, _ := json.Marshal("\n\nHere is text for the context:\n")
+	contextText := string(contextTextByte)
+
 	if len(args) > 1 {
-		stat, _ := os.Stdin.Stat()
-
-		// Checking for piped text
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			scanner := bufio.NewScanner(os.Stdin)
-			for scanner.Scan() {
-				pipedInput += scanner.Text()
-			}
-
-			if err := scanner.Err(); err != nil {
-				fmt.Fprintln(os.Stderr, "reading standard input:", err)
-			}
-		}
-
-		if len(pipedInput) > 0 {
-			cleanPipedInputByte, _ := json.Marshal(pipedInput)
-			cleanPipedInput = string(cleanPipedInputByte)
-			cleanPipedInput = cleanPipedInput[1 : len(cleanPipedInput)-1]
-
-			safePipedBytes, _ := json.Marshal("\n\nHere is some text for the context:\n" + pipedInput + "\n")
-			pipedInput = string(safePipedBytes)
-			pipedInput = pipedInput[1 : len(pipedInput)-1]
-		}
-
 		switch {
 
 		case *isVersion:
@@ -143,7 +161,7 @@ func main() {
 					fmt.Fprintln(os.Stderr, `Example: tgpt -w "What is encryption?"`)
 					os.Exit(1)
 				}
-				getWholeText(*preprompt + trimmedPrompt + pipedInput)
+				getWholeText(*preprompt + trimmedPrompt + contextText + pipedInput)
 			} else {
 				formattedInput := getFormattedInputStdin()
 				fmt.Println()
@@ -157,7 +175,7 @@ func main() {
 					fmt.Fprintln(os.Stderr, `Example: tgpt -q "What is encryption?"`)
 					os.Exit(1)
 				}
-				getSilentText(*preprompt + trimmedPrompt + pipedInput)
+				getSilentText(*preprompt + trimmedPrompt + contextText + pipedInput)
 			} else {
 				formattedInput := getFormattedInputStdin()
 				fmt.Println()
@@ -172,7 +190,7 @@ func main() {
 					fmt.Fprintln(os.Stderr, `Example: tgpt -s "How to update system"`)
 					os.Exit(1)
 				}
-				shellCommand(*preprompt + trimmedPrompt + pipedInput)
+				shellCommand(*preprompt + trimmedPrompt + contextText + pipedInput)
 			} else {
 				fmt.Fprintln(os.Stderr, "You need to provide some text")
 				fmt.Fprintln(os.Stderr, `Example: tgpt -s "How to update system"`)
@@ -187,7 +205,7 @@ func main() {
 					fmt.Fprintln(os.Stderr, `Example: tgpt -c "Hello world in Python"`)
 					os.Exit(1)
 				}
-				codeGenerate(*preprompt + trimmedPrompt + pipedInput)
+				codeGenerate(*preprompt + trimmedPrompt + contextText + pipedInput)
 			} else {
 				fmt.Fprintln(os.Stderr, "You need to provide some text")
 				fmt.Fprintln(os.Stderr, `Example: tgpt -c "Hello world in Python"`)
@@ -302,7 +320,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			getData(*preprompt+formattedInput+pipedInput, false, structs.ExtraOptions{})
+			getData(*preprompt+formattedInput+contextText+pipedInput, false, structs.ExtraOptions{})
 		}
 
 	} else {
@@ -311,7 +329,7 @@ func main() {
 		input := scanner.Text()
 		go loading(&stopSpin)
 		formattedInput := strings.TrimSpace(input)
-		getData(*preprompt+formattedInput, false, structs.ExtraOptions{})
+		getData(*preprompt+formattedInput+pipedInput, false, structs.ExtraOptions{})
 	}
 }
 
@@ -439,7 +457,7 @@ func showHelpMessage() {
 	fmt.Printf("%-50v Gives response back without loading animation\n", "-q, --quiet")
 	fmt.Printf("%-50v Gives response back as a whole text\n", "-w, --whole")
 	fmt.Printf("%-50v Generate images from text\n", "-img, --image")
-	fmt.Printf("%-50v Set Provider. Detailed information has been provided below\n", "--provider")
+	fmt.Printf("%-50v Set Provider. Detailed information has been provided below. (Env: AI_PROVIDER)\n", "--provider")
 
 	boldBlue.Println("\nSome additional options can be set. However not all options are supported by all providers. Not supported options will just be ignored.")
 	fmt.Printf("%-50v Set Model\n", "--model")
@@ -460,11 +478,14 @@ func showHelpMessage() {
 	}
 
 	boldBlue.Println("\nProviders:")
-	fmt.Println("The default provider is phind which uses Phind model.")
-	fmt.Println("Available providers to use: openai, koboldai, phind, llama2, blackboxai, ollama, groq")
+	fmt.Println("The default provider is phind. The AI_PROVIDER environment variable can be used to specify a different provider.")
+	fmt.Println("Available providers to use: openai, opengpts, koboldai, phind, llama2, blackboxai, ollama and groq")
 
 	bold.Println("\nProvider: openai")
-	fmt.Println("Needs API key to work and supports various models")
+	fmt.Println("Needs API key to work and supports various models. Recognizes the OPENAI_API_KEY and OPENAI_MODEL environment variables.")
+
+	bold.Println("\nProvider: opengpts")
+	fmt.Println("Uses gpt-3.5-turbo only. Do not use with sensitive data")
 
 	bold.Println("\nProvider: koboldai")
 	fmt.Println("Uses koboldcpp/HF_SPACE_Tiefighter-13B only, answers from novels")

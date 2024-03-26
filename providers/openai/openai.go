@@ -31,15 +31,22 @@ func NewRequest(input string, params structs.Params, prevMessages string) (*http
 	model := "gpt-3.5-turbo"
 	if params.ApiModel != "" {
 		model = params.ApiModel
+	} else if envModel := os.Getenv("OPENAI_MODEL"); envModel != "" {
+		model = envModel
+	}
+
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if params.ApiKey != "" {
+		apiKey = params.ApiKey
 	}
 
 	temperature := "0.5"
-	if params.Temperature != ""{
+	if params.Temperature != "" {
 		temperature = params.Temperature
 	}
 
 	top_p := "0.5"
-	if params.Top_p != ""{
+	if params.Top_p != "" {
 		top_p = params.Top_p
 	}
 
@@ -62,7 +69,7 @@ func NewRequest(input string, params structs.Params, prevMessages string) (*http
 	}
 	`, prevMessages, string(safeInput), model, temperature, top_p))
 
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", data)
+	req, err := http.NewRequest("POST", params.Url, data)
 	if err != nil {
 		fmt.Println("\nSome error has occurred.")
 		fmt.Println("Error:", err)
@@ -70,7 +77,7 @@ func NewRequest(input string, params structs.Params, prevMessages string) (*http
 	}
 	// Setting all the required headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer " + params.ApiKey)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 
 	// Return response
 	return (client.Do(req))
