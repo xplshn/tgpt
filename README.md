@@ -29,11 +29,12 @@ Flags:
 -q, --quiet                                        Gives response back without loading animation
 -w, --whole                                        Gives response back as a whole text
 -img, --image                                      Generate images from text
---provider                                         Set Provider. Detailed information has been provided below
+--provider                                         Set Provider. Detailed information has been provided below (Env: AI_PROVIDER)
 
 Some additional options can be set. However not all options are supported by all providers. Not supported options will just be ignored.
 --model                                            Set Model
 --key                                              Set API Key
+--url                                              Set OpenAI API endpoint url
 --temperature                                      Set temperature
 --top_p                                            Set top_p
 --max_length                                       Set max response length
@@ -47,11 +48,11 @@ Options:
 -u, --update                                       Update program 
 
 Providers:
-The default provider is phind which uses 'GPT-3.5-turbo' model.
-Available providers to use: openai, opengpts, koboldai, phind, llama2, blackboxai
+The default provider is phind. The AI_PROVIDER environment variable can be used to specify a different provider.
+Available providers to use: openai, opengpts, koboldai, phind, llama2, blackboxai, ollama and groq
 
 Provider: openai
-Needs API key to work and supports various models
+Needs API key to work and supports various models. Recognizes the OPENAI_API_KEY and OPENAI_MODEL environment variables.
 
 Provider: opengpts
 Uses gpt-3.5-turbo only. Do not use with sensitive data
@@ -67,6 +68,12 @@ Llama 2 is an open source large language model (LLM) developed by Meta AI. Uses 
 
 Provider: blackboxai
 Uses BlackBox model. Great for developers
+
+Provider: ollama
+Needs to be run locally. Supports many models
+
+Provider: groq
+Requires a free API Key. Supports LLaMA2-70b & Mixtral-8x7b
 
 Examples:
 tgpt "What is internet?"
@@ -135,7 +142,7 @@ If you installed the program with the installation script, you may update it wit
 ```bash
 tgpt -u
 ```
-**It may require admin privilages.**
+**It may require admin privileges.**
 ### Proxy
 
 Support:

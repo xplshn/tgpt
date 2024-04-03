@@ -22,7 +22,7 @@ import (
 	"github.com/olekukonko/ts"
 )
 
-const localVersion = "2.7.2"
+const localVersion = "2.7.3"
 
 var bold = color.New(color.Bold)
 var boldBlue = color.New(color.Bold, color.FgBlue)
@@ -389,6 +389,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			if m.textarea.Focused() {
 				m.textarea, cmd = m.textarea.Update(msg)
+				m.textarea.SetHeight(min(20, max(6, m.textarea.LineCount()+1)))
 				cmds = append(cmds, cmd)
 			}
 		}
@@ -424,6 +425,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				userInput = clip
 				m.textarea, cmd = m.textarea.Update(msg)
+				m.textarea.SetHeight(min(20, max(6, m.textarea.LineCount()+1)))
 				cmds = append(cmds, cmd)
 			}
 		}
@@ -462,6 +464,7 @@ func showHelpMessage() {
 	boldBlue.Println("\nSome additional options can be set. However not all options are supported by all providers. Not supported options will just be ignored.")
 	fmt.Printf("%-50v Set Model\n", "--model")
 	fmt.Printf("%-50v Set API Key\n", "--key")
+	fmt.Printf("%-50v Set OpenAI API endpoint url\n", "--url")
 	fmt.Printf("%-50v Set temperature\n", "--temperature")
 	fmt.Printf("%-50v Set top_p\n", "--top_p")
 	fmt.Printf("%-50v Set max response length\n", "--max_length")
